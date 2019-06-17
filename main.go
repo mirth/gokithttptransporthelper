@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 
@@ -50,9 +51,14 @@ func MakeRequestDecoder(payloadMaker func() interface{}) httptransport.DecodeReq
 			}
 		}
 
-		err = json.NewDecoder(r.Body).Decode(payload)
-		if err != nil {
-			// TODO
+		bytes, err := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
+		if len(bytes) > 0 {
+			err = json.Unmarshal(bytes, payload) //NewDecoder(r.Body).Decode(payload)
+			if err != nil {
+				panic(err.Error())
+				// TODO
+			}
 		}
 
 		return payload, nil
