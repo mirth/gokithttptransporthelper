@@ -16,6 +16,9 @@ import (
 // body
 
 // omitempty
+// fixed size array
+// decoder.RegisterConverter(time.Time{}, timeConverter)
+
 func MakeRequestDecoder(payloadMaker func() interface{}) httptransport.DecodeRequestFunc {
 	return func(_ context.Context, r *http.Request) (request interface{}, err error) {
 		payload := payloadMaker()
@@ -42,19 +45,29 @@ func MakeRequestDecoder(payloadMaker func() interface{}) httptransport.DecodeReq
 				if len(queryValue) == 1 {
 					LiteralStore(queryValue[0], fieldValue)
 				} else {
-					// TODO
+					// decodeQueryArray(fieldType, fieldValue, queryValue)
 				}
 			}
+		}
 
-			err := json.NewDecoder(r.Body).Decode(payload)
-			if err != nil {
-				// TODO
-			}
+		err = json.NewDecoder(r.Body).Decode(payload)
+		if err != nil {
+			// TODO
 		}
 
 		return payload, nil
 	}
 }
+
+// func decodeQueryArray(fieldType reflect.StructField, fieldValue reflect.Value, queryValue []string) {
+// 	array := reflect.MakeSlice(fieldValue.Type(), 0, 0)
+// 	for _, stringValue := range queryValue {
+// 		value := reflect.New(fieldType.Type.Elem())
+// 		LiteralStore(stringValue, value)
+// 		array = reflect.Append(array, value)
+// 	}
+// 	fieldValue.Set(array)
+// }
 
 func main() {
 

@@ -60,6 +60,8 @@ type productRequest struct {
 	ProjectID    int    `json:"project_id"`
 	Query1       int8   `json:"query1"`
 	Query2       string `json:"query2"`
+	// Array1       []int32  `json:"array1"`
+	// Array2       []string `json:"array2"`
 }
 
 func makeTestProductRequestEndpoint(t *testing.T, gt productRequest) endpoint.Endpoint {
@@ -77,6 +79,8 @@ func TestMakeRequestDecoder(t *testing.T) {
 		ProjectID:    123123,
 		Query1:       124,
 		Query2:       "q2",
+		// Array1:       []int32{1, 2, 3},
+		// Array2:       []string{"a", "b", "c"},
 	})
 	productRequestDecoder := MakeRequestDecoder(func() interface{} {
 		return &productRequest{}
@@ -88,28 +92,32 @@ func TestMakeRequestDecoder(t *testing.T) {
 		[]string{
 			"query1", "{query1}",
 			"query2", "{query2}",
+			// "array1", "{array1}",
+			// "array2", "{array2}",
 		},
 		productRequestDecoder,
 		produtTestingEndpoint,
-		"http://example.com/products/123123/test_category?query1=124&query2=q2",
+		"http://example.com/products/123123/test_category?query1=124&query2=q2", //&array1[]=1&array1[]=2&array1[]=3&array2[]=a&array2[]=b&array2[]=c",
 		[]byte{},
 	)
 
-	testDecoder(
-		"POST",
-		"/products",
-		[]string{},
-		productRequestDecoder,
-		produtTestingEndpoint,
-		"http://example.com/products",
-		[]byte(
-			`{
-				"category_name": "test_category",
-				"project_id": 123123,
-				"query1": 124,
-				"query2": "q2"
-			}`),
-	)
+	// testDecoder(
+	// 	"POST",
+	// 	"/products",
+	// 	[]string{},
+	// 	productRequestDecoder,
+	// 	produtTestingEndpoint,
+	// 	"http://example.com/products",
+	// 	[]byte(
+	// 		`{
+	// 			"category_name": "test_category",
+	// 			"project_id": 123123,
+	// 			"query1": 124,
+	// 			"query2": "q2",
+	// 			"array1": [1, 2, 3],
+	// 			"array2": ["a", "b", "c"],
+	// 		}`),
+	// )
 
 	// all types in all scopes
 	// scope intersection
