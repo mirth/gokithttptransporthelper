@@ -10,15 +10,13 @@ var numberType = reflect.TypeOf(json.Number(""))
 
 const useNumber bool = false
 
-func LiteralStore(item string, v reflect.Value) error {
+func LiteralStore(s string, v reflect.Value) error {
 	// Check for unmarshaler.
-	if len(item) == 0 {
+	if len(s) == 0 {
 		//Empty string given
 		// d.saveError(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
 		return nil
 	}
-
-	s := item
 
 	switch v.Kind() {
 	case reflect.String:
