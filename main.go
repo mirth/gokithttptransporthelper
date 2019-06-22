@@ -55,6 +55,7 @@ func (d *Decoder) Decode(r *http.Request, payload interface{}) error {
 	bytes, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if len(bytes) > 0 {
+		// fmt.Println("bytes", string(bytes))
 		err = json.Unmarshal(bytes, payload) //NewDecoder(r.Body).Decode(payload)
 		if err != nil {
 			panic(err.Error())

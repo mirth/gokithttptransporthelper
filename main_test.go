@@ -64,7 +64,7 @@ type productRequest struct {
 	Array2       []string `json:"array2"`
 }
 
-type typesRequest struct {
+type TypesRequest struct {
 	I8   int8    `json:"i8"`
 	I16  int16   `json:"i16"`
 	I32  int32   `json:"i32"`
@@ -78,22 +78,55 @@ type typesRequest struct {
 	F32  float32 `json:"f32"`
 	F64  float64 `json:"f64"`
 	STR  string  `json:"str"`
+
+	// bool
+
+	// PtrI8   *int8    `json:"ptr_i8"`
+	// PtrI16  *int16   `json:"ptr_i16"`
+	// PtrI32  *int32   `json:"ptr_i32"`
+	// PtrI64  *int64   `json:"ptr_i64"`
+	// PtrUI8  *uint8   `json:"ptr_ui8"`
+	// PtrUI16 *uint16  `json:"ptr_ui16"`
+	// PtrUI32 *uint32  `json:"ptr_ui32"`
+	// PtrUI64 *uint64  `json:"ptr_ui64"`
+	// PtrI    *int     `json:"ptr_i"`
+	// PtrUI   *uint    `json:"ptr_ui"`
+	// PtrF32  *float32 `json:"ptr_f32"`
+	// PtrF64  *float64 `json:"ptr_f64"`
+	// PtrSTR  *string  `json:"ptr_str"`
 }
 
-func makeTestProductRequestEndpoint(t *testing.T, gt productRequest) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (response interface{}, err error) {
-		req := *request.(*productRequest)
+// do not test all variations of array and map because it implemented via standard json package
+type TypesRequestForBody struct {
+	TypesRequest
 
-		assert.Equal(t, req, gt)
+	Array []int          `json:"array"`
+	Map   map[string]int `json:"map"`
+}
+
+func makeTestProductRequestEndpoint(t *testing.T, expected productRequest) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (response interface{}, err error) {
+		actual := *request.(*productRequest)
+
+		assert.Equal(t, expected, actual)
 		return nil, nil
 	}
 }
 
-func makeTestTypesRequestEndpoint(t *testing.T, gt typesRequest) endpoint.Endpoint {
+func makeTestTypesRequestEndpoint(t *testing.T, expected TypesRequest) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (response interface{}, err error) {
-		req := *request.(*typesRequest)
+		actual := *request.(*TypesRequest)
 
-		assert.Equal(t, req, gt)
+		assert.Equal(t, expected, actual)
+		return nil, nil
+	}
+}
+
+func makeTestBodyTypesRequestEndpoint(t *testing.T, expected TypesRequestForBody) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (response interface{}, err error) {
+		actual := *request.(*TypesRequestForBody)
+
+		assert.Equal(t, expected, actual)
 		return nil, nil
 	}
 }
@@ -105,6 +138,10 @@ func makeRequestDecoder(payloadMaker func() interface{}) httptransport.DecodeReq
 		decoder.Decode(r, payload)
 		return payload, nil
 	}
+}
+
+func asIface(x interface{}) interface{} {
+	return x
 }
 
 func TestMakeRequestDecoder(t *testing.T) {
@@ -163,11 +200,15 @@ func TestMakeRequestDecoder(t *testing.T) {
 		)
 	}
 
-	typesRequestDecoder := makeRequestDecoder(func() interface{} {
-		return &typesRequest{}
+	TypesRequestDecoder := makeRequestDecoder(func() interface{} {
+		return &TypesRequest{}
 	})
 
-	expectedTypesRequest := typesRequest{
+	bodyTypesRequestDecoder := makeRequestDecoder(func() interface{} {
+		return &TypesRequestForBody{}
+	})
+
+	expectedTypesRequest := TypesRequest{
 		I8:   1,
 		I16:  2,
 		I32:  3,
@@ -186,11 +227,11 @@ func TestMakeRequestDecoder(t *testing.T) {
 	{
 		testDecoder(
 			"GET",
-			"/{i8}/{i16}/{i32}/{i64}/{ui8}/{ui16}/{ui32}/{ui64}/{i}/{ui}/{f32}/{f64}/{str}",
+			"/{i8}/{i16}/{i32}/{i64}/{ui8}/{ui16}/{ui32}/{ui64}/{i}/{ui}/{f32}/{f64}/{str}/{ptr_i8}",
 			[]string{},
-			typesRequestDecoder,
+			TypesRequestDecoder,
 			makeTestTypesRequestEndpoint(t, expectedTypesRequest),
-			"http://example.com/1/2/3/4/5/6/7/8/9/10/0.11/0.12/thirteen",
+			"http://example.com/1/2/3/4/5/6/7/8/9/10/0.11/0.12/thirteen/14",
 			[]byte("{}"),
 		)
 	}
@@ -214,7 +255,7 @@ func TestMakeRequestDecoder(t *testing.T) {
 				"f64", "{f64}",
 				"str", "{str}",
 			},
-			typesRequestDecoder,
+			TypesRequestDecoder,
 			makeTestTypesRequestEndpoint(t, expectedTypesRequest),
 			"http://example.com/?i8=1&i16=2&i32=3&i64=4&ui8=5&ui16=6&ui32=7&ui64=8&i=9&ui=10&f32=0.11&f64=0.12&str=thirteen",
 			[]byte("{}"),
@@ -222,12 +263,19 @@ func TestMakeRequestDecoder(t *testing.T) {
 	}
 
 	{
+		expectedBodyTypesRequest := TypesRequestForBody{
+			expectedTypesRequest,
+			[]int{1, 2, 3},
+			map[string]int{"one": 4, "two": 5, "three": 6},
+		}
+		// fmt.Println("expectedBodyTypesRequest", expectedBodyTypesRequest)
+
 		testDecoder(
 			"GET",
 			"/",
 			[]string{},
-			typesRequestDecoder,
-			makeTestTypesRequestEndpoint(t, expectedTypesRequest),
+			bodyTypesRequestDecoder,
+			makeTestBodyTypesRequestEndpoint(t, expectedBodyTypesRequest),
 			"http://example.com/",
 			[]byte(`{
 				"i8": 1,
@@ -242,11 +290,34 @@ func TestMakeRequestDecoder(t *testing.T) {
 				"ui": 10,
 				"f32": 0.11,
 				"f64": 0.12,
-				"str": "thirteen"
+				"str": "thirteen",
+				"array": [1, 2, 3],
+				"map": {
+					"one": 4,
+					"two": 5,
+					"three": 6
+				}
 			}`),
 		)
 	}
+
+	// FAIL
+	// {
+	// 	testDecoder(
+	// 		"GET",
+	// 		"/{i8}",
+	// 		[]string{},
+	// 		TypesRequestDecoder,
+	// 		makeTestTypesRequestEndpoint(t, expectedTypesRequest),
+	// 		"http://example.com/1111",
+	// 		[]byte("{}"),
+	// 	)
+	// }
+
 	// all types in all scopes
 	// overflows/forbidden/empty
 	// scope intersection
+	// omitempty
+	// embedded
+	// pointer to embedded
 }
