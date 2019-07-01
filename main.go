@@ -17,7 +17,11 @@ import (
 // fixed size array
 // decoder.RegisterConverter(time.Time{}, timeConverter)
 
+// type ConverterFunc func(string) reflect.Value
+
 type Decoder struct {
+	// custom handlers (e.g bool)
+	// customTypeHandles map[reflect.Type]ConverterFunc
 }
 
 func NewDecoder() *Decoder {
@@ -36,30 +40,43 @@ func (d *Decoder) Decode(r *http.Request, payload interface{}) error {
 		fieldValue := value.Field(i)
 		jsonTag := fieldType.Tag.Get("json")
 
+		if jsonTag == "" {
+			continue
+		}
+
+		// println(jsonTag, fieldValue)
+		// if jsonTag[0] == '-' {
+
+		// 	continue
+		// }
+
 		paramStringValue, ok := params[jsonTag]
 
 		if ok {
-			LiteralStore(paramStringValue, fieldValue)
+			err := LiteralStore(paramStringValue, fieldValue)
+			if err != nil {
+				return err
+			}
 		}
 
 		queryValue, ok := query[jsonTag]
 		if ok {
 			if len(queryValue) == 1 {
-				LiteralStore(queryValue[0], fieldValue)
-			} else {
-				// decodeQueryArray(fieldType, fieldValue, queryValue)
+				err := LiteralStore(queryValue[0], fieldValue)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	bytes, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
+
 	if len(bytes) > 0 {
-		// fmt.Println("bytes", string(bytes))
-		err = json.Unmarshal(bytes, payload) //NewDecoder(r.Body).Decode(payload)
+		err = json.Unmarshal(bytes, payload)
 		if err != nil {
-			panic(err.Error())
-			// TODO
+			return err
 		}
 	}
 

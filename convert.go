@@ -37,6 +37,14 @@ func LiteralStore(s string, v reflect.Value) error {
 			return fmt.Errorf("Failed to parse [%s] in to %v", s, v.Type())
 		}
 		v.SetFloat(n)
+	case reflect.Bool:
+		n, err := strconv.ParseBool(s)
+		if err != nil {
+			return fmt.Errorf("Failed to parse [%s] in to %v", s, v.Type())
+		}
+		v.SetBool(n)
+	default:
+		return fmt.Errorf("Unsupported type %v", v.Type())
 	}
 
 	return nil
