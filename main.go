@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -17,17 +18,18 @@ import (
 // fixed size array
 // decoder.RegisterConverter(time.Time{}, timeConverter)
 
-// type ConverterFunc func(string) reflect.Value
+type ConverterFunc func(string) reflect.Value
 
 type Decoder struct {
 	// custom handlers (e.g bool)
-	// customTypeHandles map[reflect.Type]ConverterFunc
+	customTypeConverters map[reflect.Type]ConverterFunc
 }
 
 func NewDecoder() *Decoder {
 	return &Decoder{}
 }
 
+//registerconverter
 func (d *Decoder) Decode(r *http.Request, payload interface{}) error {
 	typ := reflect.TypeOf(payload).Elem()
 	value := reflect.ValueOf(payload).Elem()
@@ -44,11 +46,9 @@ func (d *Decoder) Decode(r *http.Request, payload interface{}) error {
 			continue
 		}
 
-		// println(jsonTag, fieldValue)
-		// if jsonTag[0] == '-' {
-
-		// 	continue
-		// }
+		if jsonTag[0] == '-' {
+			continue
+		}
 
 		paramStringValue, ok := params[jsonTag]
 

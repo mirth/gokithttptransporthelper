@@ -11,9 +11,29 @@ var numberType = reflect.TypeOf(json.Number(""))
 
 const useNumber bool = false
 
+
 func LiteralStore(s string, v reflect.Value) error {
 	if len(s) == 0 {
 		return fmt.Errorf("Empty string given for %v", v.Type())
+	}
+
+	{
+		vAddr := v
+		if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
+			// haveAddr = true
+			vAddr = v.Addr()
+		}
+
+		if v.Type().NumMethod() > 0 && v.CanInterface() {
+			if u, ok := vAddr.Interface().(json.Unmarshaler); ok {
+				return u.UnmarshalJSON([]byte(s))
+			}
+			// if !decodingNull {
+			// 	if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
+			// 		return nil, u, reflect.Value{}
+			// 	}
+			// }
+		}
 	}
 
 	switch v.Kind() {
