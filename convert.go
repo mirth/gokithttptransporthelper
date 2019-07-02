@@ -24,7 +24,7 @@ func LiteralStore(s string, v reflect.Value) error {
 			vAddr = v.Addr()
 		}
 
-		if v.Type().NumMethod() > 0 && v.CanInterface() {
+		if vAddr.Type().NumMethod() > 0 && vAddr.CanInterface() {
 			if u, ok := vAddr.Interface().(json.Unmarshaler); ok {
 				return u.UnmarshalJSON([]byte(s))
 			}

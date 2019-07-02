@@ -496,30 +496,62 @@ func TestTime(t *testing.T) {
 		)
 		assert.Equal(t, 200, responseRecorder.Code)
 	}
-
-	// {
-	// 	responseRecorder := testDecoder(
-	// 		"GET",
-	// 		"/{time}",
-	// 		[]string{},
-	// 		makeRequestDecoder(func() interface{} {
-	// 			return &WithTime{}
-	// 		}),
-	// 		func(_ context.Context, request interface{}) (response interface{}, err error) {
-	// 			actual := *request.(*WithTime)
-
-	// 			assert.Equal(t, WithTime{
-	// 				T: time.Unix(1562086576, 0).UTC(),
-	// 			}, actual)
-
-	// 			return nil, nil
-	// 		},
-	// 		"http://example.com/",
-	// 		[]byte("{}"),
-	// 	)
-	// 	assert.Equal(t, 200, responseRecorder.Code)
-	// }
 }
+
+
+type MyBoolean bool
+
+func (b *MyBoolean) UnmarshalJSON(data []byte) error {
+	if string(data) == "✓" {
+		*b = MyBoolean(true)
+		return nil
+	}
+
+	*b = MyBoolean(false)
+
+	return nil
+}
+
+type WithCustomUnmarshal struct {
+	FOO string
+}
+
+func (x *WithCustomUnmarshal) UnmarshalJSON(data []byte) error {
+	x.FOO = string(data) + "kek"
+	return nil
+}
+
+func TestCustomUnmarshallers(t *testing.T) {
+	type Custom1 struct {
+		MYB MyBoolean `json:"my_bool"`
+		C WithCustomUnmarshal `json:"c"`
+	}
+
+	{
+		responseRecorder := testDecoder(
+			"GET",
+			"/{c}",
+			[]string{"my_bool", "{my_bool}"},
+			makeRequestDecoder(func() interface{} {
+				return &Custom1{}
+			}),
+			func(_ context.Context, request interface{}) (response interface{}, err error) {
+				actual := *request.(*Custom1)
+
+				assert.Equal(t, Custom1{
+					MYB: MyBoolean(true),
+					C: WithCustomUnmarshal{ FOO: "123kek" },
+				}, actual)
+
+				return nil, nil
+			},
+			`http://example.com/123?my_bool=✓`,
+			[]byte(`{}`),
+		)
+		assert.Equal(t, 200, responseRecorder.Code)
+	}
+}
+
 
 // func TestNotUseField(t *testing.T) {
 // 	type withDashField struct {
@@ -561,3 +593,5 @@ func TestTime(t *testing.T) {
 	// time.Time
 	// string -> bytes
 	// bytes
+	// pointers to field
+	// custom with "json" and without unmarshaller
