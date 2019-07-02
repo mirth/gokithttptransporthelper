@@ -83,6 +83,13 @@ func (d *Decoder) Decode(r *http.Request, payload interface{}) error {
 	return nil
 }
 
-func main() {
+func (d *Decoder) RegisterConverter(value interface{}, converterFunc ConverterFunc) {
+	d.customTypeConverters[reflect.TypeOf(value)] = converterFunc
+}
 
+type KEK struct {
+	T time.Time `json:"time"`
+}
+
+func main() {
 }

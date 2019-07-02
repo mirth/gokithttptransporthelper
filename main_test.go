@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -436,14 +437,127 @@ func TestMalformedInputData(t *testing.T) {
 	}
 }
 
+func TestScopesIntersection(t *testing.T) {
+	{
+		responseRecorder := testDecoder(
+			"GET",
+			"/{f64}/{str}/{ui16}",
+			[]string{
+				"f64", "{f64}",
+				"str", "{str}",
+			},
+			BasicTypesRequestDecoder,
+			func(_ context.Context, request interface{}) (response interface{}, err error) {
+				actual := *request.(*BasicTypesRequest)
+
+				assert.Equal(t, BasicTypesRequest{
+					F64: 0.2,
+					STR: "kek",
+					UI16: 123,
+				}, actual)
+
+				return nil, nil
+			},
+			"http://example.com/0.1/abc/123?f64=0.2&str=lol",
+			[]byte(`{ "str": "kek" }`),
+		)
+		assert.Equal(t, responseRecorder.Code, 200)
+	}
+}
+
+func TestTime(t *testing.T) {
+	type WithTime struct {
+		BODYTIME time.Time `json:"body_time"`
+		VARTIME time.Time `json:"var_time"`
+		QUERYTIME time.Time `json:"query_time"`
+	}
+
+	{
+		responseRecorder := testDecoder(
+			"GET",
+			"/{var_time}",
+			[]string{"query_time", "{query_time}"},
+			makeRequestDecoder(func() interface{} {
+				return &WithTime{}
+			}),
+			func(_ context.Context, request interface{}) (response interface{}, err error) {
+				actual := *request.(*WithTime)
+
+				assert.Equal(t, WithTime{
+					BODYTIME: time.Unix(1562086576, 0).UTC(),
+					VARTIME: time.Unix(1562086577, 0).UTC(),
+					QUERYTIME: time.Unix(1562086578, 0).UTC(),
+				}, actual)
+
+				return nil, nil
+			},
+			`http://example.com/"2019-07-02T16:56:17Z"?query_time="2019-07-02T16:56:18Z"`,
+			[]byte(`{ "body_time": "2019-07-02T16:56:16Z" }`),
+		)
+		assert.Equal(t, 200, responseRecorder.Code)
+	}
+
+	// {
+	// 	responseRecorder := testDecoder(
+	// 		"GET",
+	// 		"/{time}",
+	// 		[]string{},
+	// 		makeRequestDecoder(func() interface{} {
+	// 			return &WithTime{}
+	// 		}),
+	// 		func(_ context.Context, request interface{}) (response interface{}, err error) {
+	// 			actual := *request.(*WithTime)
+
+	// 			assert.Equal(t, WithTime{
+	// 				T: time.Unix(1562086576, 0).UTC(),
+	// 			}, actual)
+
+	// 			return nil, nil
+	// 		},
+	// 		"http://example.com/",
+	// 		[]byte("{}"),
+	// 	)
+	// 	assert.Equal(t, 200, responseRecorder.Code)
+	// }
+}
+
+// func TestNotUseField(t *testing.T) {
+// 	type withDashField struct {
+// 		Dash int `json:"-"`
+// 	}
+
+// 	responseRecorder := testDecoder(
+// 		"GET",
+// 		"/{-}",
+// 		[]string{
+// 			"–", "{-}",
+// 		},
+// 		BasicTypesRequestDecoder,
+// 		func(_ context.Context, request interface{}) (response interface{}, err error) {
+// 			actual := *request.(*withDashField)
+
+// 			assert.Equal(t, withDashField{
+// 				Dash: 0,
+// 			}, actual)
+
+// 			return nil, nil
+// 		},
+// 		"http://example.com/-345",
+// 		[]byte(`{ "-": 123 }`),
+// 	)
+// 	assert.Equal(t, responseRecorder.Code, 200)
+// }
 
 	// all types in all scopes +
 	// overflows/forbidden/empty +
 
-	// scope intersection
+	// scope intersection +
 	// omitempty +
 	// embedded +
 	// pointer to embedded
 	// body null
 	// struct as field
 	// res := testDecoder
+	// time.Time
+	// string -> bytes
+	// bytes
